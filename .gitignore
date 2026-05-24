@@ -1,0 +1,165 @@
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.envrc
+
+# =============================================================================
+# Poetry
+# =============================================================================
+# poetry export / local cache (lock-файл коммитим)
+.poetry/
+
+# =============================================================================
+# Django
+# =============================================================================
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+*.sqlite3
+*.sqlite3-journal
+
+# Static & media (generated / uploaded)
+staticfiles/
+static_root/
+media/
+media_root/
+collected_static/
+
+# Django migrations cache (optional local tooling)
+*.pot
+
+# =============================================================================
+# Celery
+# =============================================================================
+celerybeat-schedule
+celerybeat.pid
+celerybeat-schedule.db
+
+# =============================================================================
+# Secrets & environment
+# =============================================================================
+.env
+.env.*
+!.env.example
+!.env.template
+!.env.sample
+
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+
+# =============================================================================
+# Testing & quality tools
+# =============================================================================
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pytype/
+
+# =============================================================================
+# IDEs & editors
+# =============================================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Cursor — локальное состояние IDE; правила и markdown-доки можно коммитить
+.cursor/*
+!.cursor/rules/
+!.cursor/*.md
+
+# =============================================================================
+# OS
+# =============================================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =============================================================================
+# Logs & runtime
+# =============================================================================
+logs/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# =============================================================================
+# Docker (на будущее)
+# =============================================================================
+docker-compose.override.yml
+.docker/
+
+# =============================================================================
+# Jupyter / notebooks (если появятся)
+# =============================================================================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# =============================================================================
+# Misc
+# =============================================================================
+*.bak
+*.tmp
+*.temp
+.cache/
+tmp/
+temp/
