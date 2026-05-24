@@ -1,6 +1,6 @@
 import uuid
-from ...aplication.dtos.create_project_dto import CreateProjectDTO
-from ...aplication.adapters.article_project_rep import ArticleProjectRepository
+from ...application.dtos.create_project_dto import CreateProjectDTO
+from ...application.adapters.article_project_rep import ArticleProjectRepository
 from ...domain.entities.article_project import ArticleProject
 from ...domain.value_objects.project_statuses import ProjectStatus
 from datetime import datetime

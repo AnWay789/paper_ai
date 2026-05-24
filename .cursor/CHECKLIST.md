@@ -2,6 +2,23 @@
 
 Цель: один рабочий сценарий end-to-end + тесты + понятный запуск.
 
+**Формула run-step:** не фиксированные «6 шагов», а  
+`4 + count_chapters` вызовов LLM (title, intro, names, **N × content**, merge, seo).
+
+---
+
+## Сделано недавно (domain / пайплайн)
+
+- [x] Хук `advance` в `GenerationStep` — переход статуса вынесен из `apply_generation_step`
+- [x] Поочерёдная генерация содержимого глав (`add_article_chapters_content`, цикл на `GENERATE_CHAPTERS_CONTENT`)
+- [x] `get_count_chapters_content()` — безопасный подсчёт глав без исключений
+- [x] Порядок в `apply_generation_step`: `apply → post_apply → advance`
+
+  > Проверено симуляцией в domain: при `count_chapters=3` три run-step на content → `MERGE_ARTICLE`.
+
+- [x] `PromtBuilder`: плейсхолдер номера текущей главы (`chapter_index` / `chapter_number`) для промпта «напиши главу N»
+- [ ] Явная проверка `get_next_status()` на `None` в `_advance_to_next_step` (сейчас TODO в коде)
+
 ---
 
 ## День 1 — «Чтобы проект вообще завёлся»
@@ -9,34 +26,31 @@
 ### Django и база
 
 - [x] Подключить app в `INSTALLED_APPS` (`paper_ai.apps.articles`, поправить `apps.py`)
-- [ ] Импортировать ORM-модели в `models.py` (чтобы Django их увидел)
-- [ ] Запустить `makemigrations` и `migrate` без ошибок
-- [ ] Зарегистрировать модели в `admin.py` (проект, статья, шаблоны промптов)
+- [x] Импортировать ORM-модели в `models.py` (чтобы Django их увидел)
+- [x] Запустить `makemigrations` и `migrate` без ошибок
 
-  > Комментарий: сейчас ORM лежит в `infrastructure/orm/`, но Django о нём не знает. Без этого репозитории и use cases существуют «в вакууме» — сохранить в БД нельзя, demo не собрать.
+  > Миграций в репозитории пока нет — первый `makemigrations` обязателен.
+
+- [x] Зарегистрировать модели в `admin.py` (проект, статья, шаблоны промптов)
 
 - [x] Добавить поле `problems` в `ArticlePaperORM` (JSONField)
 - [x] Пробросить `problems` в `article_paper_mapper.py` (to_domain / to_orm)
 
-  > Комментарий: SEO-проблемы считаются в domain, но в БД не сохраняются. После перезапуска они пропадут, SEO-шаг получит пустой `{problems}`.
-
 - [ ] Проверить `ArticleProjectORMRepository.save()` — обновление существующей записи, а не только insert
 
-  > Комментарий: если `save()` всегда создаёт новые ORM-объекты, при втором шаге генерации могут появиться дубликаты или ошибки FK. Прогони два `RunStep` подряд руками.
+  > `save()` вызывает `paper_orm.save()` + `article_project_orm.save()` с тем же `id` — в Django это UPDATE. Нужен ручной прогон: create → два `run-step` подряд → в admin одна запись, без дубликатов FK.
 
-- [ ] Убрать циклический import между `article_project.py` и `article_paper.py` в ORM (если есть)
-
-  > Комментарий: циклические импорты — классическая причина `ImportError` при старте Django. Проявляется только при `migrate` / `runserver`.
+- [x] Убрать циклический import между `article_project.py` и `article_paper.py` в ORM (если есть)
 
 ### Быстрые правки domain
 
 - [ ] Убрать или не использовать лишние статусы: `NOT_STARTED`, `STARTED` (оставить один путь: `NEW → GENERATE_TITLE`)
 
-  > Комментарий: три «начальных» статуса путают и в коде, и в admin. Из-за этого легко поставить промпт не на тот шаг или вызвать `RunStep` когда генерация ещё не началась.
+  > Статусы всё ещё в `ProjectStatus` и `status_transition_policy`. `STARTED` в `in_progress_statuses`.
 
-- [ ] Исправить mutable default в `ArticlePaper`: `problems: list[str] | None = None`
+- [x] Исправить mutable default в `ArticlePaper`: `problems: list[str] = []` → `problems: list[str] | None = None`
 
-  > Комментарий: `problems=[]` в аргументах по умолчанию — общий список на все экземпляры. Один проект может «заразить» проблемами другой.
+  > В `__init__` по-прежнему `problems=[]` — общий список на все экземпляры.
 
 ---
 
@@ -44,34 +58,33 @@
 
 ### Fake LLM и пайплайн
 
-- [ ] Переделать `FakeLLMClient` — возвращать разный ответ в зависимости от статуса / ключевого слова в промпте
+- [ ] Переделать `FakeLLMClient` — разный ответ по статусу / маркеру в промпте
 
-  > Комментарий: сейчас всегда `'fake response'`. Пайплайн на шагах с `list[str]` упадёт или запишет мусор. Fake-клиент должен имитировать реальное поведение LLM.
+  > Сейчас всегда `'fake response'`. Нужно: `str` для title/intro/content, `list[str]` для names, учёт `count_chapters` для цикла глав.
 
-- [ ] Добавить обработку ошибок в `RunStepGenerationUseCase` → перевод в `ERROR` + save
+- [x] Добавить обработку ошибок в `RunStepGenerationUseCase` → перевод в `ERROR` + save
 
-  > Комментарий: без этого любой сбой OpenAI / сети / шаблона роняет задачу без следа в БД. Пользователь не поймёт, на каком шаге всё сломалось.
+- [ ] Проверить полный ручной сценарий: create → start → run-step × `(4 + count_chapters)` → `COMPLETED`
 
-- [ ] Проверить полный ручной сценарий: create → start → run step × 6 → `COMPLETED`
-
-  > Комментарий: это главный критерий зрелости. Пока не пройден — проект учебный, не рабочий.
+  > Пример: `count_chapters=3` → **7** вызовов run-step (3 из них — content на одном статусе).
 
 ### Тесты (минимум для junior+)
 
 - [ ] Unit: `ArticleProject.start_generation()` — переход `NEW → GENERATE_TITLE`
 - [ ] Unit: `apply_generation_step()` — title записывается, статус меняется
+- [ ] Unit: поочерёдные главы — `count_chapters=3`, три вызова на `GENERATE_CHAPTERS_CONTENT` → `MERGE_ARTICLE`
 - [ ] Unit: `change_status()` — запрет недопустимого перехода
 - [ ] Unit: `ArticleSeoAnalyzer` — находит проблему с depth/width
 - [ ] Unit: `PromtBuilder` — подставляет `{marker}`, пустые поля статьи → `''`
-- [ ] Integration: in-memory / Django TestCase — create → start → 6 шагов с `FakeLLMClient` → `COMPLETED`
+- [ ] Integration: Django TestCase — create → start → полный пайплайн с `FakeLLMClient` → `COMPLETED`
 
-  > Комментарий: без тестов архитектура не защищена от регрессий. После рефакторинга `generation_step.py` один неверный handler сломает весь конвейер — тест это поймает за секунды.
+  > `tests.py` пустой — тестов пока нет.
 
 ### Seed данных
 
 - [ ] Создать шаблоны промптов в admin (или fixture) для каждого шага: `generate_title` … `seo_fix`
 
-  > Комментарий: `PromtTemplateORMRepository.get_template_by_status()` бросит `DoesNotExist`, если шаблона нет. На demo это самая частая ошибка.
+  > Для content-шага один шаблон на статус `generate_chapters_content` (вызывается N раз).
 
 ---
 
@@ -79,37 +92,25 @@
 
 ### API или точка входа
 
-- [ ] Подключить Django Ninja в `urls.py`
+- [ ] Подключить Django Ninja в `urls.py` (зависимость в `pyproject.toml` уже есть)
 - [ ] Эндпоинты: `POST /projects`, `POST /projects/{id}/start`, `POST /projects/{id}/run-step`, `GET /projects/{id}`
-
-  > Комментарий: admin хватит для себя, но API — понятная точка demo для портфолио и собеседования. Без API проект «работает только если ты знаешь, как дернуть use case из shell».
 
 - [ ] Простая фабрика/DI: собрать use case с реальными репозиториями и `FakeLLMClient` / `OpenAILLMClient`
 
-  > Комментарий: сейчас use cases есть, но нигде не склеены в одну точку входа. Из-за этого каждый новый эндпоинт будет копировать wiring.
-
-### Celery (опционально, если останется время)
+### Celery (опционально)
 
 - [ ] Настроить `CELERY_BROKER_URL` в settings
-- [ ] Task: `run_generation_step(project_id)` — вызывает use case, если не `COMPLETED` — ставит себя снова
+- [ ] Task: `run_generation_step(project_id)` — вызывает use case, пока не `COMPLETED` — ставит себя снова
 
-  > Комментарий: без Celery нужно 6 раз руками жать run-step. Для продукта это слабо, для MVP достаточно API + один вызов в цикле из management command.
+  > Для глав с `count_chapters > 1` цикл должен крутиться на `GENERATE_CHAPTERS_CONTENT`, пока `advance` не переведёт на merge.
 
 ### Документация и гигиена
 
 - [ ] Написать `README.md`: что делает проект, как установить, как прогнать генерацию
 - [ ] Добавить `.env.example` с `OPENAI_API_KEY`
-- [ ] Переименовать `aplication` → `application` (или зафиксировать в README как tech debt)
-
-  > Комментарий: опечатки в имени пакета на ревью выглядят как невнимательность. Не блокер, но для «зрелости» лучше поправить.
-
-- [ ] Перенести ABC репозиториев из `adapters/` в `ports/` (интерфейсы отдельно от use cases)
-
-  > Комментарий: сейчас порты и адаптеры смешаны по смыслу. На junior+ ожидают, что `ports/` — контракты, `infrastructure/` — реализации.
-
+- [ ] Переименовать `application` → `application` (или зафиксировать в README как tech debt)
+- [ ] Перенести ABC репозиториев из `adapters/` в `ports/`
 - [ ] Убрать неиспользуемый import `ArticleProject` из `LLMClientPort`
-
-  > Комментарий: порт LLM не должен знать про domain-сущности. Мелочь, но нарушает Clean Architecture и сбивает с толку при чтении.
 
 ---
 
@@ -117,9 +118,9 @@
 
 - [ ] `python manage.py test` — все тесты зелёные
 - [ ] `migrate` на чистой БД — без ошибок
-- [ ] Один проект проходит весь пайплайн до `COMPLETED`
-- [ ] В admin видны: проект, статья, title, final_article, problems
-- [ ] README позволяет повторить это за 10 минут без твоих подсказок
+- [ ] Один проект проходит весь пайплайн до `COMPLETED` (с учётом `count_chapters`)
+- [ ] В admin видны: проект, статья, title, chapters, final_article, problems
+- [ ] README позволяет повторить это за 10 минут без подсказок
 
 ---
 
@@ -129,8 +130,22 @@
 |------|-------|
 | Архитектура без запуска | `migrate` + admin/API работают |
 | Логика без доказательств | ≥ 6 тестов, 1 integration |
-| Конвейер «на бумаге» | create → start → 6 steps → COMPLETED |
+| Конвейер «на бумаге» | create → start → `4+N` steps → COMPLETED |
 | Непонятно как запустить | README + .env.example |
+| Главы одним вызовом LLM | По одной главе за run-step (`advance` + append) |
+
+---
+
+## Справка: статусы и шаги генерации
+
+| Статус | LLM-вызовов | Ответ LLM | После шага |
+|--------|-------------|-----------|------------|
+| `generate_title` | 1 | `str` | → introduction |
+| `generate_introduction` | 1 | `str` | → chapters_name |
+| `generate_chapters_name` | 1 | `list[str]` (все названия) | → chapters_content |
+| `generate_chapters_content` | **count_chapters** | `str` (одна глава) | остаёмся / → merge |
+| `merge_article` | 1 | `str` | → seo_fix (+ `find_problems`) |
+| `seo_fix` | 1 | `str` | → completed |
 
 ---
 

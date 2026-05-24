@@ -1,4 +1,4 @@
-from ...aplication.adapters.article_project_rep import ArticleProjectRepository
+from ...application.adapters.article_project_rep import ArticleProjectRepository
 
 class DeleteProjectUseCase:
     def __init__(self, article_project_repository: ArticleProjectRepository):

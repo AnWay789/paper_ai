@@ -1,5 +1,11 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Callable, TYPE_CHECKING
+
+
+class LlmResponseFormat(Enum):
+    TEXT = "text"
+    COMMA_SEPARATED_LIST = "comma_separated_list"
 
 from ..exceptions.generation_ex import InvalidGenerationResponseException
 from .project_statuses import ProjectStatus
@@ -59,8 +65,8 @@ def _advance_chapters_content_to_next_step(project: "ArticleProject") -> None:
     
     if generated < needed:
         return # не нужно переходить на следующий шаг, т.к. не все главы созданы
-    else:
-        _advance_to_next_step(project)
+    
+    _advance_to_next_step(project)
 
 @dataclass(frozen=True)
 class GenerationStep:
@@ -68,6 +74,7 @@ class GenerationStep:
     apply: StepApplyHandler
     advance: AdvanceHandler
     post_apply: PostApplyHook | None = None
+    llm_response_format: LlmResponseFormat = LlmResponseFormat.TEXT
 
 
 GENERATION_STEPS: dict[ProjectStatus, GenerationStep] = {
@@ -85,6 +92,7 @@ GENERATION_STEPS: dict[ProjectStatus, GenerationStep] = {
         next_status=ProjectStatus.GENERATE_CHAPTERS_CONTENT,
         apply=_apply_chapters_name,
         advance=_advance_to_next_step,
+        llm_response_format=LlmResponseFormat.COMMA_SEPARATED_LIST,
     ),
     ProjectStatus.GENERATE_CHAPTERS_CONTENT: GenerationStep(
         next_status=ProjectStatus.MERGE_ARTICLE,
@@ -114,3 +122,7 @@ def is_generation_step(status: ProjectStatus) -> bool:
 
 def get_generation_step(status: ProjectStatus) -> GenerationStep:
     return GENERATION_STEPS[status]
+
+
+def get_llm_response_format(status: ProjectStatus) -> LlmResponseFormat:
+    return get_generation_step(status).llm_response_format

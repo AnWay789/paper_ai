@@ -1,4 +1,5 @@
 from datetime import datetime
+from .article_paper import ArticlePaper
 from ..value_objects.project_statuses import ProjectStatus
 from ..value_objects.project_statuses import in_progress_statuses
 from ..value_objects.generation_step import (
@@ -10,7 +11,6 @@ from ..policies.status_transition_policy import (
     can_start_generation,
 )
 from ..services.article_seo_analyzer import ArticleSeoAnalyzer
-from .article_paper import ArticlePaper
 from ..exceptions.article_project_ex import ArticleProjectAlredyInProgressException
 from ..exceptions.status_ex import InvalidStatusChangeException
 from ..exceptions.generation_ex import InvalidGenerationStepException
@@ -234,7 +234,8 @@ class ArticleProject:
             return "Нет проблем"
         return "\n".join(problems)
 
-
+    def to_error_status(self) -> None:
+        self.change_status(ProjectStatus.ERROR)
 
 # маркер
     def get_marker(self) -> str:

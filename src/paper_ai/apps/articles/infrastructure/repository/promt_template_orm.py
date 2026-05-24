@@ -1,4 +1,4 @@
-from ...aplication.adapters.promt_template_rep import PromtTemplateRepository
+from ...application.adapters.promt_template_rep import PromtTemplateRepository
 from ..orm.promts import PromtTemplateORM
 from ...domain.value_objects.project_statuses import ProjectStatus
 

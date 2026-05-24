@@ -24,6 +24,7 @@ class PromtBuilder:
             "about_author": self.article_project.get_about_author(),
             "article_title": self._optional(self.article_project.get_article_title),
             "article_introduction": self._optional(self.article_project.get_article_introduction),
+            "chapter_index": self.article_project.get_count_chapters_content(),
             "article_chapters_name": self._optional(
                 self.article_project.get_article_chapters_name_by_text
             ),

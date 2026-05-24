@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from ...aplication.adapters.article_project_rep import ArticleProjectRepository
+from ...application.adapters.article_project_rep import ArticleProjectRepository
 from ...infrastructure.orm.article_project import ArticleProjectORM
 from ...domain.entities.article_project import ArticleProject
 from ...infrastructure.mappers.article_project_mapper import to_domain as to_domain_article_project

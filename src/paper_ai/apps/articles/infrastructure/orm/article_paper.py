@@ -3,6 +3,8 @@ from django.db import models
 class ArticlePaperORM(models.Model):
     class Meta:
         app_label = "articles"
+        verbose_name = "Статья"
+        verbose_name_plural = "Статьи"
 
     id = models.UUIDField(primary_key=True, editable=False)
     article_title = models.TextField(null=True, blank=True)
@@ -11,3 +13,4 @@ class ArticlePaperORM(models.Model):
     article_chapters_contents = models.JSONField(null=True, blank=True)
     final_article = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    problems = models.JSONField(null=True, blank=True)

@@ -7,7 +7,7 @@ class ArticlePaper:
         article_chapters_name: list[str] | None = None,
         article_chapters_content: list[str] | None = None,
         final_article: str | None = None,
-        problems: list[str] = [],
+        problems: list[str] | None = None,
     ):
         self.id = id
         self.article_title = article_title

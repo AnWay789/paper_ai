@@ -1,5 +1,5 @@
-from ...aplication.dtos.update_project_dto import UpdateProjectDTO
-from ...aplication.adapters.article_project_rep import ArticleProjectRepository
+from ...application.dtos.update_project_dto import UpdateProjectDTO
+from ...application.adapters.article_project_rep import ArticleProjectRepository
 
 class UpdateProjectUseCase:
     def __init__(self, article_project_repository: ArticleProjectRepository):

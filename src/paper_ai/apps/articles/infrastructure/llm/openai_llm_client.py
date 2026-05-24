@@ -1,5 +1,5 @@
 from openai import OpenAI
-from ...aplication.ports.llm_client import LLMClientPort
+from ...application.ports.llm_client import LLMClientPort
 
 class OpenAILLMClient(LLMClientPort):
     def __init__(self, api_key: str):

@@ -17,6 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from ..apps.articles.interface.api.app_api import paper_ai_api
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', paper_ai_api.urls),
 ]
