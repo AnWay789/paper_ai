@@ -81,6 +81,7 @@ max_count_chapters = 20 # максимальное количество глав
 min_about_author_length = 2 # минимальная длина о авторе
 max_about_author_length = 300 # максимальная длина о авторе
 
+# TODO: Разбить класс, сейчас он огромный God entity.
 class ArticleProject:
     """
     Проект статьи включая саму статью, статус генерации и время создания
