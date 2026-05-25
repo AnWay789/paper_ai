@@ -59,6 +59,7 @@ collected_static/
 
 # Django migrations cache (optional local tooling)
 *.pot
+migrations/
 
 # =============================================================================
 # Celery

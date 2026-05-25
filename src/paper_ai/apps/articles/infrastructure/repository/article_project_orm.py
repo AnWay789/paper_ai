@@ -18,11 +18,38 @@ class ArticleProjectORMRepository(ArticleProjectRepository):
 
     @transaction.atomic
     def save(self, article_project: ArticleProject) -> None:
-        article_project_orm = to_orm_article_project(article_project)
-        paper_orm = article_project_orm.article_paper
-        if paper_orm is not None:
-            paper_orm.save()
-        article_project_orm.save()
+        paper = article_project.get_article_paper()
+        paper_pk = None
+        if paper is not None:
+            paper_orm = to_orm_article_paper(paper)
+            ArticlePaperORM.objects.update_or_create(
+                id=paper_orm.id,
+                defaults={
+                    "article_title": paper_orm.article_title,
+                    "article_introduction": paper_orm.article_introduction,
+                    "article_chapters_name": paper_orm.article_chapters_name,
+                    "article_chapters_contents": paper_orm.article_chapters_contents,
+                    "final_article": paper_orm.final_article,
+                    "problems": paper_orm.problems,
+                },
+            )
+            paper_pk = paper_orm.id
+
+        project_orm = to_orm_article_project(article_project)
+        ArticleProjectORM.objects.update_or_create(
+            id=project_orm.id,
+            defaults={
+                "marker": project_orm.marker,
+                "depth": project_orm.depth,
+                "width": project_orm.width,
+                "n_gramms": project_orm.n_gramms,
+                "count_chapters": project_orm.count_chapters,
+                "about_author": project_orm.about_author,
+                "status": project_orm.status,
+                "created_at": project_orm.created_at,
+                "article_paper_id": paper_pk,
+            },
+        )
 
     @transaction.atomic
     def delete(self, article_project_id: str) -> None:

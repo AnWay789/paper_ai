@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from ...domain.value_objects.project_statuses import ProjectStatus
 
@@ -27,6 +29,6 @@ class PromtTemplateORM(models.Model):
         verbose_name = "Шаблон промпта"
         verbose_name_plural = "Шаблоны промптов"
 
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     status = models.CharField(max_length=255, choices=ProjectStatus.in_progress_choices())
     template = models.TextField(help_text=prompt_template_help_text)

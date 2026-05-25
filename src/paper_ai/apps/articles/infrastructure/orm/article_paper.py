@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 
 class ArticlePaperORM(models.Model):
@@ -6,7 +8,7 @@ class ArticlePaperORM(models.Model):
         verbose_name = "Статья"
         verbose_name_plural = "Статьи"
 
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     article_title = models.TextField(null=True, blank=True)
     article_introduction = models.TextField(null=True, blank=True)
     article_chapters_name = models.JSONField(null=True, blank=True)

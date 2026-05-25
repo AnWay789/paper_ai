@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from .article_paper import ArticlePaperORM
 from ...domain.value_objects.project_statuses import ProjectStatus
@@ -8,7 +10,7 @@ class ArticleProjectORM(models.Model):
         verbose_name = "Проект статьи"
         verbose_name_plural = "Проекты статей"
 
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     marker = models.TextField()
     depth = models.JSONField()
     width = models.JSONField()

@@ -16,6 +16,7 @@ from ..dependencies import (
 )
 from ..schemas.create_project import CreateProjectResponseSchema, CreateProjectSchema
 from ..schemas.project import ProjectResponseSchema, project_to_response
+from ....tasks import run_generation_step
 
 projects_router = Router(tags=["projects"])
 
@@ -46,9 +47,9 @@ def get_project(request: HttpRequest, project_id: UUID):
 def start_generation(request: HttpRequest, project_id: UUID):
     try:
         get_start_generation_use_case().execute(str(project_id))
+        run_generation_step.delay(str(project_id))
     except ArticleProjectNotFoundException as exc:
         raise HttpError(404, str(exc)) from exc
     except InvalidStatusChangeException as exc:
         raise HttpError(400, str(exc)) from exc
     return 204, None
-
