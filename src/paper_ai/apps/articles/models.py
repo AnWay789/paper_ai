@@ -1,7 +1,8 @@
 import uuid
+from decimal import Decimal
 
 from django.db import models
-
+from django.core.validators import MinValueValidator
 from .exceptions.article_project_ex import ArticleProjectAlredyInProgressException
 from .exceptions.atricle_paper_ex import (
     ArticlePaperChaptersContentDoesNotExist,
@@ -22,15 +23,6 @@ from .generation import (
     is_generation_step,
 )
 from .validation import validate_project_fields
-
-
-PROMPT_TEMPLATE_HELP_TEXT = """
-<br> Шаблон промпта. Переменные:
-<br> marker, depth, width, n_gramms, count_chapters, about_author, chapter_index
-<br> (опционально) article_title, article_introduction, article_chapters_name,
-<br> article_chapters_content, final_article, problems
-<br> Подстановка: текст {переменная} текст
-"""
 
 
 class ArticlePaper(models.Model):
@@ -69,7 +61,11 @@ class ArticleProject(models.Model):
     n_gramms = models.JSONField()
     count_chapters = models.IntegerField()
     about_author = models.TextField()
-    status = models.TextField(db_index=True, choices=ProjectStatus.to_choice())
+    status = models.TextField(
+        db_index=True,
+        choices=ProjectStatus.to_choice(),
+        default=ProjectStatus.NEW.value,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     article_paper = models.OneToOneField(
         ArticlePaper,
@@ -78,10 +74,23 @@ class ArticleProject(models.Model):
         blank=True,
         related_name="project",
     )
+    llm_model = models.ForeignKey("LLMModels", on_delete=models.PROTECT, null=True, blank=True)
+    cost_input = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, default=0)
+    cost_output = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, default=0)
+    cost_total = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, default=0)
+    estimated_cost_input = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True, default=0
+    )
+    estimated_cost_output = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True, default=0
+    )
+    estimated_cost_total = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True, default=0
+    )
 
     @property
     def status_enum(self) -> ProjectStatus:
-        return ProjectStatus(self.status)
+        return ProjectStatus.parse(self.status)
 
     def get_depth(self) -> list[tuple[str, int]]:
         return [(row[0], int(row[1])) for row in self.depth]
@@ -162,6 +171,14 @@ class ArticleProject(models.Model):
             raise ArticlePaperChaptersNameDoesNotExist("Названия глав еще не созданы")
         return paper.article_chapters_name
 
+    def get_chapter_index_name(self, index: int) -> str:
+        names = self.get_article_chapters_name()
+        if index < 0 or index >= len(names):
+            raise ArticlePaperChaptersNameDoesNotExist(
+                f"Название главы с индексом {index} не найдено"
+            )
+        return names[index]
+
     def get_article_chapters_name_by_text(self) -> str:
         return "".join(f'"{name}",\n' for name in self.get_article_chapters_name())
 
@@ -224,6 +241,7 @@ class ArticleProject(models.Model):
         n_gramms: list[str],
         count_chapters: int,
         about_author: str,
+        llm_model: "LLMModels | None" = None,
     ) -> "ArticleProject":
         validate_project_fields(
             marker=marker,
@@ -243,8 +261,23 @@ class ArticleProject(models.Model):
             about_author=about_author,
             status=ProjectStatus.NEW.value,
             article_paper=paper,
+            llm_model=llm_model,
         )
 
+
+PROMPT_TEMPLATE_HELP_TEXT = """
+    <br> Шаблон промпта. Переменные:
+    <br> marker, depth, width, n_gramms, count_chapters, about_author, chapter_index,
+    <br> chapter_index_name
+    <br> (опционально) article_title, article_introduction, article_chapters_name,
+    <br> article_chapters_content, final_article, problems
+    <br> Подстановка: текст {переменная} текст
+"""
+
+HELP_TEXT_EXPECTED_OUTPUT_RATIO = """
+    Доля output-токенов от input-токенов промпта для сметы.
+    <br> Например, 0.1 — ответ примерно в 10 раз короче промпта по числу токенов.
+"""
 
 class PromtTemplate(models.Model):
     class Meta:
@@ -259,3 +292,44 @@ class PromtTemplate(models.Model):
         choices=ProjectStatus.in_progress_choices(),
     )
     template = models.TextField(help_text=PROMPT_TEMPLATE_HELP_TEXT)
+    expected_output_ratio = models.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        default=Decimal("0.1000"),
+        help_text=HELP_TEXT_EXPECTED_OUTPUT_RATIO,
+    )
+
+
+HELP_TEXT_CACHED_INPUT_PRICE = """
+    Цена за кэшированные входные токены. Если пусто — используется input_price.
+"""
+
+class LlmTokenPrice(models.Model):
+    class Meta:
+        app_label = "articles"
+        db_table = "articles_llmtokenpriceorm"
+        verbose_name = "Цена токена LLM"
+        verbose_name_plural = "Цены токенов LLM"
+
+    model_name = models.CharField(max_length=255, unique=True)
+    input_price = models.DecimalField(max_digits=10, decimal_places=2)
+    output_price = models.DecimalField(max_digits=10, decimal_places=2)
+    per_count_tokens = models.IntegerField(validators=[MinValueValidator(1)])
+    cached_input_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=HELP_TEXT_CACHED_INPUT_PRICE,
+    )
+
+
+class LLMModels(models.Model):
+    class Meta:
+        app_label = "articles"
+        db_table = "articles_llmmodelsorm"
+        verbose_name = "Модель LLM"
+        verbose_name_plural = "Модели LLM"
+
+    model_name = models.CharField(max_length=255, unique=True)
+    model_system_name = models.CharField(max_length=255)

@@ -26,6 +26,8 @@ services:
       - app_data:/app/data
       - ./src:/app/src
       - ./manage.py:/app/manage.py
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./poetry.lock:/app/poetry.lock
     depends_on:
       redis:
         condition: service_healthy
@@ -43,6 +45,8 @@ services:
       - app_data:/app/data
       - ./src:/app/src
       - ./manage.py:/app/manage.py
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./poetry.lock:/app/poetry.lock
     depends_on:
       redis:
         condition: service_healthy

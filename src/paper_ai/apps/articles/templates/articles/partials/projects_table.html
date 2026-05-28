@@ -1,0 +1,52 @@
+{% load articles_extras %}
+{% if projects %}
+<form method="post" id="bulk-form">
+  {% csrf_token %}
+  <table>
+    <thead>
+      <tr>
+        <th><input type="checkbox" id="select-all" title="Выбрать все"></th>
+        <th>Маркер</th>
+        <th>Статус</th>
+        <th>Смета</th>
+        <th>Факт</th>
+        <th>Создан</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for project in projects %}
+      <tr>
+        <td><input type="checkbox" name="project_ids" value="{{ project.id }}" class="project-checkbox" form="bulk-form"></td>
+        <td><a href="{% url 'articles:project_detail' project_id=project.id %}">{{ project.marker|truncatechars:50 }}</a></td>
+        <td>
+          <span class="badge {{ project.status|project_status_badge }}">{{ project.status|project_status_label }}</span>
+        </td>
+        <td>{{ project.estimated_cost_total|default:"—" }}</td>
+        <td>{{ project.cost_total|default:"—" }}</td>
+        <td>{{ project.created_at|date:"d.m.Y H:i" }}</td>
+        <td class="row-actions">
+          <a class="btn btn-secondary btn-sm" href="{% url 'articles:project_detail' project_id=project.id %}">Открыть</a>
+          {% if project|can_edit_project %}
+          <a class="btn btn-secondary btn-sm" href="{% url 'articles:project_edit' project_id=project.id %}">Изменить</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</form>
+<script>
+  (function () {
+    const selectAll = document.getElementById("select-all");
+    if (!selectAll) return;
+    selectAll.addEventListener("change", function () {
+      document.querySelectorAll(".project-checkbox").forEach(function (cb) {
+        cb.checked = selectAll.checked;
+      });
+    });
+  })();
+</script>
+{% else %}
+<p class="empty-state">Проектов пока нет. Создайте вручную или импортируйте Excel.</p>
+{% endif %}

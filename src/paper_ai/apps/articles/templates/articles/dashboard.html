@@ -1,0 +1,47 @@
+{% extends "articles/base.html" %}
+
+{% block title %}Проекты — Paper AI{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <a class="btn btn-primary" href="{% url 'articles:project_create' %}">Создать проект</a>
+
+    <form class="import-form" method="post" action="{% url 'articles:project_import' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="file" name="file" accept=".xlsx" required>
+      <select name="llm_model_id">
+        <option value="">LLM по умолчанию</option>
+        {% for model in llm_models %}
+        <option value="{{ model.id }}">{{ model.model_name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-secondary" type="submit">Импорт Excel</button>
+    </form>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-secondary btn-sm" type="submit" form="bulk-form" formaction="{% url 'articles:bulk_estimate' %}">
+      Смета для выбранных
+    </button>
+    <button class="btn btn-primary btn-sm" type="submit" form="bulk-form" formaction="{% url 'articles:bulk_start' %}">
+      Запустить генерацию
+    </button>
+    {% if has_in_progress %}
+    <span class="polling-hint htmx-indicator">Обновление…</span>
+    {% endif %}
+    <span class="polling-hint">Всего: {{ total }}</span>
+  </div>
+
+  <div
+    id="projects-table"
+    {% if has_in_progress %}
+    hx-get="{% url 'articles:projects_table_partial' %}"
+    hx-trigger="every 3s"
+    hx-swap="innerHTML"
+    {% endif %}
+  >
+    {% include "articles/partials/projects_table.html" %}
+  </div>
+</div>
+{% endblock %}

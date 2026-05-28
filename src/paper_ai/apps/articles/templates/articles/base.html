@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Paper AI{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'articles/css/app.css' %}">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="layout">
+    <header class="site-header">
+      <h1><a href="{% url 'articles:dashboard' %}">Paper <span>AI</span></a></h1>
+      <nav class="nav-links">
+        <a class="btn btn-secondary btn-sm" href="{% url 'articles:dashboard' %}">Проекты</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'articles:project_create' %}">Новый проект</a>
+        <a class="btn btn-secondary btn-sm" href="/api/docs" target="_blank" rel="noopener">API</a>
+      </nav>
+    </header>
+
+    {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+      <li class="{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

@@ -5,8 +5,8 @@ from .fake import FakeLLMClient
 from .openai_client import OpenAILLMClient
 
 
-def get_llm_client() -> LLMClient:
+def get_llm_client(model_name: str) -> LLMClient:
     api_key = getattr(settings, "OPENAI_API_KEY", None)
-    if api_key:
-        return OpenAILLMClient(api_key=api_key)
-    return FakeLLMClient()
+    if api_key and model_name:
+        return OpenAILLMClient(api_key=api_key, model_name=model_name)
+    return FakeLLMClient(model_name=model_name or "gpt-4o-mini")

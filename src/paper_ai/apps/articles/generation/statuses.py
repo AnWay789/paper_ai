@@ -14,9 +14,22 @@ class ProjectStatus(Enum):
     CANCELLED = "cancelled" # отменена генерация
     ERROR = "error" # ошибка в генерации
 
+    @classmethod
+    def parse(cls, raw: str | None) -> "ProjectStatus":
+        if not raw:
+            raise ValueError("status is empty")
+        try:
+            return cls(raw)
+        except ValueError:
+            pass
+        try:
+            return cls[raw]
+        except KeyError as exc:
+            raise ValueError(f"{raw!r} is not a valid ProjectStatus") from exc
+
     @staticmethod
     def to_choice() -> list[tuple[str, str]]:
-        return [(status.name, status.value) for status in ProjectStatus]
+        return [(status.value, status.name) for status in ProjectStatus]
 
     @staticmethod
     def in_progress_choices() -> list[tuple[str, str]]:

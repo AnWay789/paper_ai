@@ -1,0 +1,95 @@
+{% extends "articles/base.html" %}
+
+{% block title %}{% if is_edit %}Редактирование{% else %}Новый проект{% endif %} — Paper AI{% endblock %}
+
+{% block content %}
+<div class="card" x-data="projectForm()">
+  <h2 style="margin-top:0">{% if is_edit %}Редактирование проекта{% else %}Новый проект{% endif %}</h2>
+  {% if is_edit %}
+  <p class="polling-hint">Изменения не затрагивают уже сгенерированную статью. После правок пересчитайте смету и при необходимости запустите генерацию заново.</p>
+  {% endif %}
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+
+    <div>
+      <label for="marker">Маркер</label>
+      <input id="marker" name="marker" required maxlength="100" value="{{ form_data.marker|default:'' }}">
+    </div>
+
+    <div>
+      <label>Глубина (ключевое слово + количество)</label>
+      <div class="depth-rows">
+        <template x-for="(row, index) in depthRows" :key="index">
+          <div class="depth-row">
+            <input type="text" name="depth_keyword" x-model="row.keyword" placeholder="ключевое слово" required>
+            <input type="number" name="depth_count" x-model="row.count" min="1" max="100" required>
+            <button class="btn btn-danger btn-sm" type="button" @click="removeRow(index)" x-show="depthRows.length > 1">×</button>
+          </div>
+        </template>
+        <button class="btn btn-secondary btn-sm" type="button" @click="addRow()">Добавить ключевое слово</button>
+      </div>
+    </div>
+
+    <div>
+      <label for="width">Ширина (слова через запятую или с новой строки)</label>
+      <textarea id="width" name="width" required>{{ form_data.width|default:'' }}</textarea>
+    </div>
+
+    <div>
+      <label for="n_gramms">N-граммы (через запятую или с новой строки)</label>
+      <textarea id="n_gramms" name="n_gramms">{{ form_data.n_gramms|default:'' }}</textarea>
+    </div>
+
+    <div>
+      <label for="count_chapters">Количество разделов</label>
+      <input id="count_chapters" name="count_chapters" type="number" min="1" max="20" required value="{{ form_data.count_chapters|default:'5' }}">
+    </div>
+
+    <div>
+      <label for="about_author">О авторе</label>
+      <textarea id="about_author" name="about_author" required maxlength="300">{{ form_data.about_author|default:'' }}</textarea>
+    </div>
+
+    <div>
+      <label for="llm_model_id">LLM-модель</label>
+      <select id="llm_model_id" name="llm_model_id">
+        <option value="">По умолчанию</option>
+        {% for model in llm_models %}
+        <option value="{{ model.id }}" {% if form_data.llm_model_id == model.id|stringformat:"s" %}selected{% endif %}>
+          {{ model.model_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn-primary" type="submit">{% if is_edit %}Сохранить{% else %}Создать{% endif %}</button>
+      {% if is_edit %}
+      <a class="btn btn-secondary" href="{% url 'articles:project_detail' project_id=project.id %}">Отмена</a>
+      {% else %}
+      <a class="btn btn-secondary" href="{% url 'articles:dashboard' %}">Отмена</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+{{ depth_rows|json_script:"depth-data" }}
+<script>
+  function projectForm() {
+    const el = document.getElementById("depth-data");
+    let rows = el ? JSON.parse(el.textContent) : [{ keyword: "", count: 1 }];
+    if (!Array.isArray(rows)) {
+      rows = [{ keyword: "", count: 1 }];
+    }
+    return {
+      depthRows: rows,
+      addRow() {
+        this.depthRows.push({ keyword: "", count: 1 });
+      },
+      removeRow(index) {
+        this.depthRows.splice(index, 1);
+      },
+    };
+  }
+</script>
+{% endblock %}

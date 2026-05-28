@@ -1,0 +1,112 @@
+{% extends "articles/base.html" %}
+{% load articles_extras %}
+
+{% block title %}{{ project.marker|truncatechars:40 }} — Paper AI{% endblock %}
+
+{% block content %}
+<div
+  class="card"
+  x-data="articleDetail()"
+  {% if is_in_progress %}
+  hx-get="{% url 'articles:project_detail' project_id=project.id %}"
+  hx-trigger="every 5s"
+  hx-select=".card"
+  hx-target="closest .card"
+  hx-swap="outerHTML"
+  {% endif %}
+>
+  <div class="toolbar">
+    <a class="btn btn-secondary btn-sm" href="{% url 'articles:dashboard' %}">← К списку</a>
+    {% if can_edit %}
+    <a class="btn btn-secondary btn-sm" href="{% url 'articles:project_edit' project_id=project.id %}">Редактировать</a>
+    {% endif %}
+    <form method="post" action="{% url 'articles:project_estimate' project_id=project.id %}" style="display:inline">
+      {% csrf_token %}
+      <button class="btn btn-secondary btn-sm" type="submit">Пересчитать смету</button>
+    </form>
+    {% if can_start %}
+    <form method="post" action="{% url 'articles:project_start' project_id=project.id %}" style="display:inline">
+      {% csrf_token %}
+      <button class="btn btn-primary btn-sm" type="submit">Запустить генерацию</button>
+    </form>
+    {% endif %}
+    {% if project.article_paper and project.article_paper.final_article %}
+    <a class="btn btn-secondary btn-sm" href="/api/projects/{{ project.id }}/article.html" download>Скачать HTML</a>
+    <button class="btn btn-primary btn-sm" type="button" @click="copyHtml()">Копировать HTML</button>
+    {% endif %}
+    <form method="post" action="{% url 'articles:project_delete' project_id=project.id %}" style="display:inline" onsubmit="return confirm('Удалить проект?');">
+      {% csrf_token %}
+      <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
+    </form>
+  </div>
+
+  <h2 style="margin-top:0">{{ project.marker }}</h2>
+  <p>
+    <span class="badge {{ project.status|project_status_badge }}">{{ project.status|project_status_label }}</span>
+  </p>
+
+  <div class="meta-grid">
+    <div class="meta-item">
+      <label>Смета (всего)</label>
+      <strong>{{ project.estimated_cost_total|default:"—" }}</strong>
+    </div>
+    <div class="meta-item">
+      <label>Факт (всего)</label>
+      <strong>{{ project.cost_total|default:"—" }}</strong>
+    </div>
+    <div class="meta-item">
+      <label>Разделов</label>
+      <strong>{{ project.count_chapters }}</strong>
+    </div>
+    <div class="meta-item">
+      <label>LLM</label>
+      <strong>{{ project.llm_model.model_name|default:"—" }}</strong>
+    </div>
+    <div class="meta-item">
+      <label>Создан</label>
+      <strong>{{ project.created_at|date:"d.m.Y H:i" }}</strong>
+    </div>
+  </div>
+
+  {% if project.article_paper and project.article_paper.problems %}
+  <div class="card" style="margin-top:1rem;background:var(--surface-2)">
+    <h3 style="margin-top:0;font-size:1rem">SEO-замечания</h3>
+    <ul>
+      {% for problem in project.article_paper.problems %}
+      <li>{{ problem }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if project.article_paper and project.article_paper.final_article %}
+  <textarea id="article-html-source" hidden>{{ project.article_paper.final_article }}</textarea>
+  <div class="article-preview">
+    <iframe title="Превью статьи" sandbox="allow-same-origin" :srcdoc="htmlSource"></iframe>
+  </div>
+  <p class="polling-hint" x-show="copied" x-transition>Скопировано в буфер обмена</p>
+  {% else %}
+  <p class="empty-state">Статья ещё не готова. Запустите генерацию и дождитесь статуса «Готово».</p>
+  {% endif %}
+</div>
+
+<script>
+  function articleDetail() {
+    const source = document.getElementById("article-html-source");
+    return {
+      htmlSource: source ? source.value : "",
+      copied: false,
+      async copyHtml() {
+        if (!this.htmlSource) return;
+        try {
+          await navigator.clipboard.writeText(this.htmlSource);
+          this.copied = true;
+          setTimeout(() => { this.copied = false; }, 2000);
+        } catch (e) {
+          alert("Не удалось скопировать: " + e);
+        }
+      },
+    };
+  }
+</script>
+{% endblock %}
