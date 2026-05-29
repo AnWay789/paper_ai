@@ -9,7 +9,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .models import ArticleProject
-from .services.excel_import import parse_list, parse_workbook
+from .services.excel_import import effective_llm_model_id, parse_list, parse_workbook
 from .services.generation import save_generation_estimate, start_generation
 from .services.project import (
     create_project,
@@ -17,6 +17,7 @@ from .services.project import (
     get_project,
     list_llm_models,
     list_projects,
+    parse_llm_model_id_from_request,
     update_project,
 )
 from .tasks import run_generation_step
@@ -272,10 +273,18 @@ def project_import(request: HttpRequest) -> HttpResponse:
         messages.error(request, "Выберите файл Excel (.xlsx)")
         return redirect("articles:dashboard")
 
-    llm_model_id_raw = request.POST.get("llm_model_id", "").strip()
-    llm_model_id = int(llm_model_id_raw) if llm_model_id_raw else None
+    try:
+        fallback_llm_model_id = parse_llm_model_id_from_request(
+            request.POST.get("llm_model_id")
+        )
+    except ValueError:
+        messages.error(request, "Некорректный id LLM-модели в форме импорта")
+        return redirect("articles:dashboard")
 
-    parsed_rows, import_errors = parse_workbook(upload.file)
+    parsed_rows, import_errors = parse_workbook(
+        upload.file,
+        default_llm_model_id=fallback_llm_model_id,
+    )
     created_count = 0
     for row_number, row in parsed_rows:
         try:
@@ -286,7 +295,7 @@ def project_import(request: HttpRequest) -> HttpResponse:
                 n_gramms=row.n_gramms,
                 count_chapters=row.count_chapters,
                 about_author=row.about_author,
-                llm_model_id=llm_model_id,
+                llm_model_id=effective_llm_model_id(row, fallback_llm_model_id),
             )
             created_count += 1
         except Exception as exc:

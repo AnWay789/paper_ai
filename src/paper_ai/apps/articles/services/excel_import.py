@@ -8,17 +8,24 @@ from typing import BinaryIO
 from openpyxl import load_workbook
 
 from ..validation import validate_project_fields
+from .project import build_llm_model_lookup, resolve_llm_model_id
 
 HEADER_ALIASES = {
     "маркер": "marker",
     "глубина": "depth",
     "ширина": "width",
     "n-грамма": "n_gramms",
+    "n_gramm": "n_gramms",
     "n_грамма": "n_gramms",
     "кол-во разделов": "count_chapters",
     "количество разделов": "count_chapters",
     "блок о авторе": "about_author",
     "о авторе": "about_author",
+    "модель": "llm_model",
+    "llm": "llm_model",
+    "llm-модель": "llm_model",
+    "llm модель": "llm_model",
+    "model": "llm_model",
 }
 
 
@@ -30,12 +37,23 @@ class ParsedProjectRow:
     n_gramms: list[str]
     count_chapters: int
     about_author: str
+    llm_model_id: int | None = None
 
 
 @dataclass(frozen=True)
 class RowError:
     row: int
     message: str
+
+
+def effective_llm_model_id(
+    row: ParsedProjectRow,
+    fallback_llm_model_id: int | None,
+) -> int | None:
+    """Модель из строки Excel, иначе выбор из формы импорта."""
+    if row.llm_model_id is not None:
+        return row.llm_model_id
+    return fallback_llm_model_id
 
 
 def _normalize_header(value: object) -> str:
@@ -64,7 +82,11 @@ def parse_list(text: str) -> list[str]:
     return [item.strip() for item in normalized.split(",") if item.strip()]
 
 
-def parse_workbook(file: BinaryIO) -> tuple[list[tuple[int, ParsedProjectRow]], list[RowError]]:
+def parse_workbook(
+    file: BinaryIO,
+    *,
+    default_llm_model_id: int | None = None,
+) -> tuple[list[tuple[int, ParsedProjectRow]], list[RowError]]:
     workbook = load_workbook(BytesIO(file.read()), read_only=True, data_only=True)
     sheet = workbook.active
     rows_iter = sheet.iter_rows(values_only=True)
@@ -84,6 +106,9 @@ def parse_workbook(file: BinaryIO) -> tuple[list[tuple[int, ParsedProjectRow]], 
     if missing:
         labels = ", ".join(sorted(missing))
         return [], [RowError(row=1, message=f"Отсутствуют колонки: {labels}")]
+
+    has_model_column = "llm_model" in column_map
+    llm_lookup = build_llm_model_lookup() if has_model_column else None
 
     parsed_rows: list[tuple[int, ParsedProjectRow]] = []
     errors: list[RowError] = []
@@ -115,6 +140,12 @@ def parse_workbook(file: BinaryIO) -> tuple[list[tuple[int, ParsedProjectRow]], 
             if not about_author:
                 raise ValueError("Блок о авторе не может быть пустым")
 
+            llm_model_id = default_llm_model_id
+            if has_model_column:
+                model_raw = cell_value("llm_model")
+                if model_raw:
+                    llm_model_id = resolve_llm_model_id(model_raw, llm_lookup)
+
             row_data = ParsedProjectRow(
                 marker=marker,
                 depth=depth,
@@ -122,6 +153,7 @@ def parse_workbook(file: BinaryIO) -> tuple[list[tuple[int, ParsedProjectRow]], 
                 n_gramms=n_gramms,
                 count_chapters=count_chapters,
                 about_author=about_author,
+                llm_model_id=llm_model_id,
             )
             validate_project_fields(
                 marker=row_data.marker,
@@ -132,6 +164,8 @@ def parse_workbook(file: BinaryIO) -> tuple[list[tuple[int, ParsedProjectRow]], 
                 about_author=row_data.about_author,
             )
             parsed_rows.append((row_number, row_data))
+        except LookupError as exc:
+            errors.append(RowError(row=row_number, message=str(exc)))
         except (ValueError, TypeError) as exc:
             errors.append(RowError(row=row_number, message=str(exc)))
         except Exception as exc:

@@ -7,17 +7,19 @@
   <div class="toolbar">
     <a class="btn btn-primary" href="{% url 'articles:project_create' %}">Создать проект</a>
 
-    <form class="import-form" method="post" action="{% url 'articles:project_import' %}" enctype="multipart/form-data">
+    <form id="import-form" class="import-form" method="post" action="{% url 'articles:project_import' %}" enctype="multipart/form-data">
       {% csrf_token %}
-      <input type="file" name="file" accept=".xlsx" required>
-      <select name="llm_model_id">
-        <option value="">LLM по умолчанию</option>
+      <label class="polling-hint" for="import-llm-model">LLM для импорта</label>
+      <select id="import-llm-model" name="llm_model_id" form="import-form">
+        <option value="">— не выбрана —</option>
         {% for model in llm_models %}
         <option value="{{ model.id }}">{{ model.model_name }}</option>
         {% endfor %}
       </select>
-      <button class="btn btn-secondary" type="submit">Импорт Excel</button>
+      <input type="file" name="file" accept=".xlsx" required form="import-form">
+      <button class="btn btn-secondary" type="submit" form="import-form">Импорт Excel</button>
     </form>
+    <span class="polling-hint">Колонка «модель» в файле — опционально; иначе берётся выбор из списка.</span>
   </div>
 
   <div class="toolbar">

@@ -92,3 +92,5 @@ class ProjectsApiTests(TestCase):
         payload = response.json()
         self.assertEqual(len(payload["created"]), 1)
         self.assertEqual(payload["errors"], [])
+        project = ArticleProject.objects.get(pk=payload["created"][0]["id"])
+        self.assertEqual(project.llm_model_id, self.llm_model.id)

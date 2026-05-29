@@ -25,6 +25,43 @@ def list_llm_models() -> list[LLMModels]:
     return list(LLMModels.objects.order_by("model_name"))
 
 
+def build_llm_model_lookup() -> dict[str, int]:
+    """Ключ — model_name или model_system_name в нижнем регистре, значение — id."""
+    lookup: dict[str, int] = {}
+    for model in LLMModels.objects.all():
+        lookup[model.model_name.strip().lower()] = model.id
+        lookup[model.model_system_name.strip().lower()] = model.id
+    return lookup
+
+
+def parse_llm_model_id_from_request(raw: str | None) -> int | None:
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    return int(text)
+
+
+def resolve_llm_model_id(raw: str, lookup: dict[str, int] | None = None) -> int | None:
+    text = raw.strip()
+    if not text:
+        return None
+    if lookup is None:
+        lookup = build_llm_model_lookup()
+    if text.isdigit():
+        model_id = int(text)
+        if LLMModels.objects.filter(pk=model_id).exists():
+            return model_id
+        raise LookupError(f"LLM-модель с id {model_id} не найдена")
+    key = text.lower()
+    if key in lookup:
+        return lookup[key]
+    raise LookupError(
+        f"Модель «{raw}» не найдена. Укажите название из справочника LLM (model_name)."
+    )
+
+
 def create_project(
     *,
     marker: str,
